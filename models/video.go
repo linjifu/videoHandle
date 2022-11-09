@@ -109,7 +109,7 @@ func (v *Video) SetDuration(savePath string) int {
 	ffmpegExePath, _ := os.Getwd()
 	ffmpegPath := ffmpegExePath + "\\ffmpeg\\bin\\ffmpeg.exe"
 	savePath = savePath + "\\images\\" + v.Name() + ".png"
-	cmdArguments := []string{"-i", strings.Replace(v.Path(), "\\", "/", -1), "-hide_banner", "code", "hevc_nvenc", "-ss", "00:00:00.1", "-s", "160*90", "-y", "-f", "image2", "-frames:v", "1", savePath}
+	cmdArguments := []string{"-i", strings.Replace(v.Path(), "\\", "/", -1), "-hide_banner", "-ss", "00:00:00.1", "-s", "160*90", "-y", "-f", "image2", "-frames:v", "1", savePath}
 	cmd := exec.Command(ffmpegPath, cmdArguments...)
 	out, err := cmd.CombinedOutput()
 	if err == nil {

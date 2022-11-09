@@ -4,8 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/fatih/color"
-	"github.com/linjifu/videoHandle2/models"
-	"github.com/linjifu/videoHandle2/utils"
+	"github.com/linjifu/videoHandle/models"
+	"github.com/linjifu/videoHandle/utils"
 	"github.com/xuri/excelize/v2"
 	"image"
 	color2 "image/color"
@@ -27,7 +27,7 @@ func Showinput() (dirPath string, savePath string) {
 	d.Printf("请输入视频文件夹地址（默认为：F:\\videos）:")
 	fmt.Scan(&dirPath)
 	if dirPath == "1" {
-		dirPath = "F:\\videos\\分析"
+		dirPath = "F:\\videos"
 	} else {
 		dirPath = strings.Replace(dirPath, "\n", "", -1)
 		dirPath = strings.Replace(dirPath, "\r", "", -1)
@@ -207,7 +207,9 @@ func saveImage(img *image.RGBA, NumCPU int, savePath string, imageChanExitChan c
 // 生成表格
 func createTable(savePath string, totalVideoNum int, TotalTime float32, maxTimeStr string, minTimeStr string, pjTimeStr string, mainExitChan chan bool) {
 	color.Cyan("开始生成excel")
+	timeTool := utils.TimeTool{}
 	f := excelize.NewFile() // 设置单元格的值
+	f.MergeCell("Sheet1", "A2", "A4")
 	// 设置表头样式
 	headStyleID, _ := f.NewStyle(`{
    "font":{
@@ -223,7 +225,8 @@ func createTable(savePath string, totalVideoNum int, TotalTime float32, maxTimeS
 }`)
 
 	f.SetCellStyle("Sheet1", "A1", "E1", headStyleID)
-	f.SetCellStyle("Sheet1", "A3", "D3", headStyleID)
+	f.SetCellStyle("Sheet1", "A3", "E3", headStyleID)
+	f.SetCellStyle("Sheet1", "A5", "E5", headStyleID)
 
 	textLeftStyleID, _ := f.NewStyle(`{
    "alignment":{
@@ -234,34 +237,63 @@ func createTable(savePath string, totalVideoNum int, TotalTime float32, maxTimeS
 	f.SetColWidth("Sheet1", "A", "E", 30)
 	// 设置行样式
 	f.SetCellStyle("Sheet1", "A2", "E2", textLeftStyleID)
+	// 设置行样式
+	f.SetCellStyle("Sheet1", "A4", "E4", textLeftStyleID)
+
 	// 这里设置表头
 	f.SetCellValue("Sheet1", "A1", "视频数量")
-	f.SetCellValue("Sheet1", "B1", "总秒数")
-	f.SetCellValue("Sheet1", "C1", "最长时间")
-	f.SetCellValue("Sheet1", "D1", "最短时间")
-	f.SetCellValue("Sheet1", "E1", "平均时间")
-
+	f.SetCellValue("Sheet1", "B1", "总秒数（.秒）")
+	f.SetCellValue("Sheet1", "C1", "最长时间（.秒）")
+	f.SetCellValue("Sheet1", "D1", "最短时间（.秒）")
+	f.SetCellValue("Sheet1", "E1", "平均时间（.秒）")
 	f.SetCellValue("Sheet1", "A2", totalVideoNum)
 	f.SetCellValue("Sheet1", "B2", TotalTime)
 	f.SetCellValue("Sheet1", "C2", maxTimeStr)
 	f.SetCellValue("Sheet1", "D2", minTimeStr)
 	f.SetCellValue("Sheet1", "E2", pjTimeStr)
 
-	f.SetCellValue("Sheet1", "A3", "视频名称")
-	f.SetCellValue("Sheet1", "B3", "视频时长")
-	f.SetCellValue("Sheet1", "C3", "视频秒数")
-	f.SetCellValue("Sheet1", "D3", "视频帧率")
+	f.SetCellValue("Sheet1", "B3", "总秒数（:帧）")
+	f.SetCellValue("Sheet1", "C3", "最长时间（:帧）")
+	f.SetCellValue("Sheet1", "D3", "最短时间（:帧）")
+	f.SetCellValue("Sheet1", "E3", "平均时间（:帧）")
 
-	line := 3
+	f.SetCellValue("Sheet1", "A5", "视频名称")
+	f.SetCellValue("Sheet1", "B5", "视频时长（.秒）")
+	f.SetCellValue("Sheet1", "C5", "视频时长（:帧）")
+	f.SetCellValue("Sheet1", "D5", "视频秒数")
+	f.SetCellValue("Sheet1", "E5", "视频帧率")
+
+	line := 5
+	tbr := float32(0)
 	for _, v := range videos {
 		line++
+		tbr = v.Tbr()
+		durationFrame := timeTool.TimeToFrame(v.Duration(), v.Tbr())
+		durationArr := strings.Split(v.Duration(), ".")
+		if len(durationArr) == 2 {
+			durationFrame = durationArr[0] + ":" + durationFrame
+		}
+
 		f.SetCellValue("Sheet1", fmt.Sprintf("A%d", line), v.Name()+v.Suffix())
 		f.SetCellValue("Sheet1", fmt.Sprintf("B%d", line), v.Duration())
-		f.SetCellValue("Sheet1", fmt.Sprintf("C%d", line), v.TotalSecond())
-		f.SetCellValue("Sheet1", fmt.Sprintf("D%d", line), v.Tbr())
+		f.SetCellValue("Sheet1", fmt.Sprintf("C%d", line), durationFrame)
+		f.SetCellValue("Sheet1", fmt.Sprintf("D%d", line), v.TotalSecond())
+		f.SetCellValue("Sheet1", fmt.Sprintf("E%d", line), v.Tbr())
 
 		// 设置行样式
-		f.SetCellStyle("Sheet1", fmt.Sprintf("A%d", line), fmt.Sprintf("D%d", line), textLeftStyleID)
+		f.SetCellStyle("Sheet1", fmt.Sprintf("A%d", line), fmt.Sprintf("E%d", line), textLeftStyleID)
+	}
+
+	timeSlice := []string{fmt.Sprintf("%v", TotalTime), maxTimeStr, minTimeStr, pjTimeStr}
+	i := 66
+	for _, s := range timeSlice {
+		durationFrame := timeTool.TimeToFrame(s, tbr)
+		durationArr := strings.Split(s, ".")
+		if len(durationArr) == 2 {
+			durationFrame = durationArr[0] + ":" + durationFrame
+		}
+		f.SetCellValue("Sheet1", fmt.Sprintf(string(i)+"4"), durationFrame)
+		i = i + 1
 	}
 
 	// 保存文件
@@ -375,7 +407,7 @@ func main() {
 
 		color.Cyan("开始图片拼接画板")
 		for i := 0; i < NumCPU; i++ {
-			fmt.Println("退出了一个封面图协程")
+			fmt.Println("开启了一个封面图协程")
 			go coverProcessor(img, imageChan, imageChanExitChan)
 		}
 		go saveImage(img, NumCPU, savePath, imageChanExitChan, mainExitChan)

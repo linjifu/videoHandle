@@ -39,3 +39,14 @@ func (t *TimeTool) timeToStr(timeVal float32) (timeStr string) {
 	}
 	return
 }
+
+func (t *TimeTool) TimeToFrame(val string, tbr float32) (frame string) {
+	arr := strings.Split(val, ".")
+	frame = val
+	if len(arr) == 2 {
+		tempStr := "0." + arr[1]
+		temp, _ := strconv.ParseFloat(tempStr, 32)
+		frame = fmt.Sprintf("%v", int(float32(temp)*tbr))
+	}
+	return
+}
